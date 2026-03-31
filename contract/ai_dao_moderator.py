@@ -123,6 +123,8 @@ Where weight is an integer 1-10."""
             raise Exception(f"Proposal '{pid}' not found")
         if not self.proposals[pid].approved:
             raise Exception(f"Proposal '{pid}' was rejected and is not open for voting")
+        if pid in self.votes and voter in self.votes[pid]:
+            raise Exception(f"Voter '{voter}' has already voted on proposal '{pid}'")
 
         scoring = self._score_argument(argument, support)
         weight = max(1, min(10, int(scoring.get("weight", 5))))
@@ -152,13 +154,30 @@ Where weight is an integer 1-10."""
                 else:
                     no_weight += w
 
+        p = self.proposals[pid]
         return {
             "pid": pid,
+            "approved": p.approved,
+            "ai_score": int(p.score),
             "yes_weight": yes_weight,
             "no_weight": no_weight,
             "total_votes": total_votes,
             "passed": yes_weight > no_weight,
         }
+
+    @gl.public.view
+    def get_all_proposals(self) -> list:
+        return [
+            {
+                "pid": p.pid,
+                "title": p.title,
+                "body": p.body,
+                "approved": p.approved,
+                "score": int(p.score),
+                "reason": p.reason,
+            }
+            for _pid, p in self.proposals.items()
+        ]
 
     @gl.public.view
     def get_proposal(self, pid: str) -> dict:
