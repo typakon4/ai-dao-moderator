@@ -14,6 +14,8 @@ class Proposal:
     approved: bool
     score: u256
     reason: str
+    finalized: bool
+    vote_passed: bool
 
 
 @allow_storage
@@ -29,9 +31,11 @@ class AIDAOModerator(gl.Contract):
     constitution: str
     proposals: TreeMap[str, Proposal]
     votes: TreeMap[str, TreeMap[str, Vote]]
+    _owner: str
 
     def __init__(self, constitution: str) -> None:
         self.constitution = constitution
+        self._owner = str(gl.message.sender_address)
 
     def _evaluate_proposal(self, title: str, body: str) -> dict:
         constitution = self.constitution
@@ -51,21 +55,14 @@ A proposal passes only if ALL three criteria are met:
 2. Feasibility — technically and practically achievable
 3. Legitimacy — genuine proposal, not spam or an attack
 
-Respond with JSON only, no other text:
+Respond with JSON ONLY, no other text:
 {{"approved": true, "score": 85, "reason": "one or two sentence explanation"}}
 
-Where:
-- approved: boolean
-- score: integer 0-100
-- reason: string"""
+It is mandatory that you respond only using the JSON format above, nothing else."""
             result = gl.nondet.exec_prompt(task, response_format="json")
             return json.dumps(result, sort_keys=True)
 
-        result_str = gl.eq_principle.prompt_comparative(
-            inner,
-            "Two evaluations are equivalent when they reach the same approval "
-            "decision and assign scores within 10 points of each other.",
-        )
+        result_str = gl.eq_principle.strict_eq(inner)
         return json.loads(result_str)
 
     def _score_argument(self, argument: str, support: bool) -> dict:
@@ -87,18 +84,14 @@ Score the argument quality 1-10:
 - 7-9: Well-reasoned, specific, references the constitution or concrete evidence
 - 10: Exceptional — comprehensive, data-backed, clearly advances the DAO mission
 
-Respond with JSON only, no other text:
+Respond with JSON ONLY, no other text:
 {{"weight": 7, "reason": "one sentence explanation"}}
 
-Where weight is an integer 1-10."""
+It is mandatory that you respond only using the JSON format above, nothing else."""
             result = gl.nondet.exec_prompt(task, response_format="json")
             return json.dumps(result, sort_keys=True)
 
-        result_str = gl.eq_principle.prompt_comparative(
-            inner,
-            "Two argument scores are equivalent when they are within 2 points "
-            "of each other and agree on the overall quality assessment.",
-        )
+        result_str = gl.eq_principle.strict_eq(inner)
         return json.loads(result_str)
 
     @gl.public.write
@@ -115,14 +108,20 @@ Where weight is an integer 1-10."""
             approved=bool(evaluation.get("approved", False)),
             score=u256(max(0, min(100, int(evaluation.get("score", 0))))),
             reason=str(evaluation.get("reason", "")),
+            finalized=False,
+            vote_passed=False,
         )
 
     @gl.public.write
-    def vote(self, pid: str, voter: str, support: bool, argument: str) -> None:
+    def vote(self, pid: str, support: bool, argument: str) -> None:
         if pid not in self.proposals:
             raise Exception(f"Proposal '{pid}' not found")
         if not self.proposals[pid].approved:
             raise Exception(f"Proposal '{pid}' was rejected and is not open for voting")
+        if self.proposals[pid].finalized:
+            raise Exception(f"Proposal '{pid}' is already finalized")
+
+        voter = str(gl.message.sender_address)
         if pid in self.votes and voter in self.votes[pid]:
             raise Exception(f"Voter '{voter}' has already voted on proposal '{pid}'")
 
@@ -135,6 +134,29 @@ Where weight is an integer 1-10."""
             argument=argument,
             weight=u256(weight),
         )
+
+    @gl.public.write
+    def finalize_votes(self, pid: str, min_yes_weight: int) -> None:
+        if pid not in self.proposals:
+            raise Exception(f"Proposal '{pid}' not found")
+        p = self.proposals[pid]
+        if p.finalized:
+            raise Exception(f"Proposal '{pid}' already finalized")
+        if not p.approved:
+            raise Exception(f"Proposal '{pid}' was rejected by AI moderator")
+
+        yes = 0
+        no = 0
+        if pid in self.votes:
+            for _v, vote in self.votes[pid].items():
+                if vote.support:
+                    yes += int(vote.weight)
+                else:
+                    no += int(vote.weight)
+
+        p.finalized = True
+        p.vote_passed = yes >= min_yes_weight and yes > no
+        self.proposals[pid] = p
 
     @gl.public.view
     def get_result(self, pid: str) -> dict:
@@ -162,7 +184,9 @@ Where weight is an integer 1-10."""
             "yes_weight": yes_weight,
             "no_weight": no_weight,
             "total_votes": total_votes,
-            "passed": yes_weight > no_weight,
+            "vote_passed": yes_weight > no_weight,
+            "finalized": p.finalized,
+            "final_result": p.vote_passed,
         }
 
     @gl.public.view
@@ -175,6 +199,8 @@ Where weight is an integer 1-10."""
                 "approved": p.approved,
                 "score": int(p.score),
                 "reason": p.reason,
+                "finalized": p.finalized,
+                "vote_passed": p.vote_passed,
             }
             for _pid, p in self.proposals.items()
         ]
@@ -192,4 +218,6 @@ Where weight is an integer 1-10."""
             "approved": p.approved,
             "score": int(p.score),
             "reason": p.reason,
+            "finalized": p.finalized,
+            "vote_passed": p.vote_passed,
         }
