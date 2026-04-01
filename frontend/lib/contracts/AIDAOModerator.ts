@@ -65,7 +65,20 @@ class AIDAOModerator {
     return [];
   }
 
+  private mapToObject(raw: any): any {
+    if (raw instanceof Map) {
+      const obj: any = {};
+      for (const [k, v] of raw.entries()) {
+        const key = k instanceof Uint8Array ? new TextDecoder().decode(k) : String(k);
+        obj[key] = v instanceof Map ? this.mapToObject(v) : v;
+      }
+      return obj;
+    }
+    return raw;
+  }
+
   private parseProposal(raw: any): Proposal {
+    raw = this.mapToObject(raw);
     if (Array.isArray(raw)) {
       return { pid: raw[0] ?? "", title: raw[1] ?? "", body: raw[2] ?? "", approved: raw[3] ?? false, score: Number(raw[4]) || 0, reason: raw[5] ?? "", finalized: raw[6] ?? false, vote_passed: raw[7] ?? false };
     }
@@ -82,6 +95,7 @@ class AIDAOModerator {
   }
 
   private parseVoteResult(raw: any): VoteResult {
+    raw = this.mapToObject(raw);
     if (Array.isArray(raw)) {
       return { pid: raw[0] ?? "", approved: raw[1] ?? false, ai_score: Number(raw[2]) || 0, yes_weight: Number(raw[3]) || 0, no_weight: Number(raw[4]) || 0, total_votes: Number(raw[5]) || 0, vote_passed: raw[6] ?? false, finalized: raw[7] ?? false, final_result: raw[8] ?? false };
     }
@@ -93,19 +107,35 @@ class AIDAOModerator {
     };
   }
 
+  private async waitAndVerify(hash: string): Promise<TransactionReceipt> {
+    const receipt = await this.client.waitForTransactionReceipt({
+      hash,
+      status: "ACCEPTED" as any,
+      retries: 36,
+      interval: 5000,
+    });
+    // waitForTransactionReceipt resolves on ANY decided state (ACCEPTED, UNDETERMINED,
+    // LEADER_TIMEOUT, VALIDATORS_TIMEOUT, CANCELED). Only ACCEPTED means state was saved.
+    const statusName: string = (receipt as any)?.statusName ?? (receipt as any)?.status_name ?? "";
+    if (statusName && statusName !== "ACCEPTED" && statusName !== "FINALIZED") {
+      throw new Error(`Transaction did not succeed (status: ${statusName}). The AI validators may have timed out — please try again.`);
+    }
+    return receipt;
+  }
+
   async submitProposal(pid: string, title: string, body: string): Promise<TransactionReceipt> {
     const hash = await this.client.writeContract({ address: this.contractAddress, functionName: "submit_proposal", args: [pid, title, body] });
-    return this.client.waitForTransactionReceipt({ hash, status: "ACCEPTED" as any, retries: 24, interval: 5000 });
+    return this.waitAndVerify(hash as string);
   }
 
   async vote(pid: string, support: boolean, argument: string): Promise<TransactionReceipt> {
     const hash = await this.client.writeContract({ address: this.contractAddress, functionName: "vote", args: [pid, support, argument] });
-    return this.client.waitForTransactionReceipt({ hash, status: "ACCEPTED" as any, retries: 24, interval: 5000 });
+    return this.waitAndVerify(hash as string);
   }
 
   async finalizeVotes(pid: string, minYesWeight: number): Promise<TransactionReceipt> {
     const hash = await this.client.writeContract({ address: this.contractAddress, functionName: "finalize_votes", args: [pid, minYesWeight] });
-    return this.client.waitForTransactionReceipt({ hash, status: "ACCEPTED" as any, retries: 24, interval: 5000 });
+    return this.waitAndVerify(hash as string);
   }
 }
 

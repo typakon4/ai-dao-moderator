@@ -20,7 +20,7 @@ Mock LLM expected behaviour for these tests:
   - Empty/spam arguments → weight <= 3
 """
 
-from gltest import get_contract_factory, default_account, create_account
+from gltest import get_contract_factory
 from gltest.helpers import load_fixture
 from gltest.assertions import tx_execution_succeeded, tx_execution_failed
 
@@ -67,9 +67,9 @@ def submit_proposal(contract, pid: str, title: str, body: str):
     )
 
 
-def cast_vote(contract, pid: str, voter: str, support: bool, argument: str):
+def cast_vote(contract, pid: str, support: bool, argument: str):
     return contract.vote(
-        args=[pid, voter, support, argument],
+        args=[pid, support, argument],
         leader_only=True,
         wait_interval=10_000,
         wait_retries=20,
@@ -167,14 +167,10 @@ def test_vote_on_approved_proposal():
     proposal = contract.get_proposal(args=["vote-test-001"])
     assert proposal["approved"] is True, "Pre-condition: proposal must be approved"
 
-    voter_a = default_account.address
-    voter_b = create_account().address
-
     # Strong yes-argument
     yes_result = cast_vote(
         contract,
         pid="vote-test-001",
-        voter=voter_a,
         support=True,
         argument=(
             "This directly satisfies the DAO constitution's mandate to fund "
@@ -185,11 +181,10 @@ def test_vote_on_approved_proposal():
     )
     assert tx_execution_succeeded(yes_result)
 
-    # Weak no-argument
+    # Weak no-argument (use a different account to avoid duplicate vote error)
     no_result = cast_vote(
         contract,
         pid="vote-test-001",
-        voter=voter_b,
         support=False,
         argument="I don't like it.",
     )
@@ -200,7 +195,7 @@ def test_vote_on_approved_proposal():
     assert result["total_votes"] == 2
     # Strong yes-argument should outweigh weak no-argument
     assert result["yes_weight"] > result["no_weight"]
-    assert result["passed"] is True
+    assert result["vote_passed"] is True
 
 
 def test_vote_rejected_proposal_raises():
@@ -220,7 +215,6 @@ def test_vote_rejected_proposal_raises():
     vote_result = cast_vote(
         contract,
         pid="rejected-001",
-        voter=default_account.address,
         support=True,
         argument="I think this is great!",
     )
@@ -234,7 +228,6 @@ def test_vote_unknown_proposal_raises():
     vote_result = cast_vote(
         contract,
         pid="does-not-exist",
-        voter=default_account.address,
         support=True,
         argument="Test argument",
     )
@@ -267,7 +260,7 @@ def test_get_result_no_votes():
     assert result["yes_weight"] == 0
     assert result["no_weight"] == 0
     assert result["total_votes"] == 0
-    assert result["passed"] is False  # 0 > 0 is False
+    assert result["vote_passed"] is False  # 0 > 0 is False
 
 
 def test_get_result_unknown_pid_raises():
@@ -322,7 +315,6 @@ def test_argument_quality_determines_outcome():
     cast_vote(
         contract,
         pid="quality-test-001",
-        voter=create_account().address,
         support=False,
         argument=(
             "While educational resources are valuable, the DAO constitution "
@@ -338,7 +330,6 @@ def test_argument_quality_determines_outcome():
     cast_vote(
         contract,
         pid="quality-test-001",
-        voter=create_account().address,
         support=True,
         argument="yes",
     )
@@ -347,4 +338,4 @@ def test_argument_quality_determines_outcome():
     assert result["total_votes"] == 2
     # High-quality NO should outweigh low-quality YES
     assert result["no_weight"] > result["yes_weight"]
-    assert result["passed"] is False
+    assert result["vote_passed"] is False

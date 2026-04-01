@@ -62,7 +62,10 @@ It is mandatory that you respond only using the JSON format above, nothing else.
             result = gl.nondet.exec_prompt(task, response_format="json")
             return json.dumps(result, sort_keys=True)
 
-        result_str = gl.eq_principle.strict_eq(inner)
+        result_str = gl.eq_principle.prompt_comparative(
+            inner,
+            "The outputs agree if both have the same 'approved' boolean value and 'score' values within 10 points of each other.",
+        )
         return json.loads(result_str)
 
     def _score_argument(self, argument: str, support: bool) -> dict:
@@ -91,7 +94,10 @@ It is mandatory that you respond only using the JSON format above, nothing else.
             result = gl.nondet.exec_prompt(task, response_format="json")
             return json.dumps(result, sort_keys=True)
 
-        result_str = gl.eq_principle.strict_eq(inner)
+        result_str = gl.eq_principle.prompt_comparative(
+            inner,
+            "The outputs agree if both assign the same 'weight' score (within 2 points).",
+        )
         return json.loads(result_str)
 
     @gl.public.write

@@ -177,10 +177,23 @@ export async function switchToGenLayerNetwork(): Promise<void> {
       params: [{ chainId: GENLAYER_CHAIN_ID_HEX }],
     });
   } catch (error: any) {
-    // If the chain is not added, add it
-    if (error.code === 4902) {
+    const code = error.code ?? error.data?.originalError?.code;
+    // 4902 = chain not added; some MetaMask versions also throw -32603 or
+    // an "Unrecognized chain ID" message for the same situation
+    const chainNotAdded =
+      code === 4902 ||
+      code === -32603 ||
+      (typeof error.message === "string" &&
+        error.message.toLowerCase().includes("unrecognized chain"));
+
+    if (chainNotAdded) {
       await addGenLayerNetwork();
-    } else if (error.code === 4001) {
+      // After adding, switch to it
+      await provider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: GENLAYER_CHAIN_ID_HEX }],
+      });
+    } else if (code === 4001) {
       throw new Error("User rejected switching the network");
     } else {
       throw new Error(`Failed to switch network: ${error.message}`);

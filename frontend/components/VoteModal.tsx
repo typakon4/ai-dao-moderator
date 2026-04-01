@@ -15,20 +15,15 @@ export function VoteModal({ proposal, open, onClose, onVote }: VoteModalProps) {
   const [support, setSupport] = useState<boolean | null>(null);
   const [argument, setArgument] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const argTooShort = argument.length > 0 && argument.length < 10;
 
   const handleVote = async () => {
-    if (support === null || !proposal || argTooShort) return;
-    setError(null);
+    if (support === null || !proposal || !argument || argTooShort) return;
     setLoading(true);
     try {
       await onVote(proposal.pid, support, argument);
       setSupport(null); setArgument("");
-      onClose();
-    } catch (err: any) {
-      setError(err?.message ?? "Failed to cast vote");
     } finally {
       setLoading(false);
     }
@@ -62,10 +57,9 @@ export function VoteModal({ proposal, open, onClose, onVote }: VoteModalProps) {
             disabled={loading}
           />
           {argTooShort && <p className="text-red-400 text-sm">Argument must be at least 10 characters</p>}
-          {error && <p className="text-red-400 text-sm">{error}</p>}
           <div className="flex gap-3 justify-end">
             <button onClick={onClose} disabled={loading} className="px-4 py-2 rounded-lg border border-white/10 text-sm font-medium text-muted-foreground hover:border-white/20 transition">Cancel</button>
-            <button onClick={handleVote} disabled={loading || support === null || argTooShort} className="px-4 py-2 rounded-lg bg-accent text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50 transition">
+            <button onClick={handleVote} disabled={loading || support === null || !argument || argTooShort} className="px-4 py-2 rounded-lg bg-accent text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50 transition">
               {loading ? "AI is scoring your argument..." : "Cast Vote"}
             </button>
           </div>

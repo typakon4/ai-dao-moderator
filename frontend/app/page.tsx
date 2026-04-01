@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useWallet } from "@/lib/genlayer/WalletProvider";
 import { Navbar } from "@/components/Navbar";
 import { useProposals, useSubmitProposal, useVote } from "@/lib/hooks/useDAOModerator";
 import { ProposalCard } from "@/components/ProposalCard";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import type { Proposal } from "@/lib/contracts/AIDAOModerator";
 
 export default function HomePage() {
-  const { address } = useAccount();
+  const { address } = useWallet();
   const [submitOpen, setSubmitOpen] = useState(false);
   const [voteProposal, setVoteProposal] = useState<Proposal | null>(null);
 
@@ -20,13 +20,25 @@ export default function HomePage() {
   const voteMutation = useVote(address);
 
   const handleSubmit = async (pid: string, title: string, body: string) => {
-    await submitMutation.mutateAsync({ pid, title, body });
-    toast.success("Proposal submitted! AI is evaluating...");
+    setSubmitOpen(false);
+    const toastId = toast.loading("AI is evaluating your proposal...");
+    try {
+      await submitMutation.mutateAsync({ pid, title, body });
+      toast.success("Proposal submitted! AI has evaluated it.", { id: toastId });
+    } catch (err: any) {
+      toast.error("Submission failed", { id: toastId, description: err?.message ?? "Please try again." });
+    }
   };
 
   const handleVote = async (pid: string, support: boolean, argument: string) => {
-    await voteMutation.mutateAsync({ pid, support, argument });
-    toast.success("Vote cast! AI scored your argument.");
+    setVoteProposal(null);
+    const toastId = toast.loading("AI is scoring your argument...");
+    try {
+      await voteMutation.mutateAsync({ pid, support, argument });
+      toast.success("Vote cast! AI scored your argument.", { id: toastId });
+    } catch (err: any) {
+      toast.error("Vote failed", { id: toastId, description: err?.message ?? "Please try again." });
+    }
   };
 
   return (
@@ -54,6 +66,9 @@ export default function HomePage() {
         )}
         {!isLoading && (!proposals || proposals.length === 0) && (
           <p className="text-center text-muted-foreground py-12">No proposals yet. Be the first!</p>
+        )}
+        {!process.env.NEXT_PUBLIC_CONTRACT_ADDRESS && (
+          <p className="text-center text-yellow-400 text-sm py-2">⚠️ Contract address not set in .env.local</p>
         )}
         {!isLoading && proposals && proposals.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
