@@ -207,6 +207,22 @@
     background: linear-gradient(135deg, oklch(0.65 0.22 300) 0%, oklch(0.55 0.37 265) 100%);
   }
 
+  /* Glass Card - alias for brand-card (legacy name kept for compatibility) */
+  .glass-card {
+    background: oklch(0.25 0.08 265 / 0.6);
+    border: 1px solid oklch(0.30 0.10 265 / 0.4);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    border-color: oklch(0.65 0.22 300 / 0.6);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1),
+                0 0 0 1px oklch(0.65 0.22 300 / 0.2);
+    transform: translateY(-2px);
+  }
+
   /* Clean Card Styles (replacing glass-morphism) */
   .brand-card {
     background: oklch(0.25 0.08 265 / 0.6);

@@ -2,6 +2,8 @@
 
 import type { Proposal } from "@/lib/contracts/AIDAOModerator";
 import { useResult } from "@/lib/hooks/useDAOModerator";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, XCircle, Flag } from "lucide-react";
 
 interface ProposalCardProps {
   proposal: Proposal;
@@ -16,9 +18,13 @@ export function ProposalCard({ proposal, onVote }: ProposalCardProps) {
   const yesPercent = totalWeight > 0 ? ((result?.yes_weight ?? 0) / totalWeight) * 100 : 0;
   const noPercent = totalWeight > 0 ? ((result?.no_weight ?? 0) / totalWeight) * 100 : 0;
 
+  const cardStyle = proposal.approved
+    ? { background: "oklch(0.22 0.05 160 / 0.45)", borderColor: "oklch(0.55 0.15 142 / 0.3)" }
+    : { background: "oklch(0.2 0.04 25 / 0.4)", borderColor: "oklch(0.55 0.2 25 / 0.2)", opacity: 0.85 };
+
   return (
-    <div className="glass-card p-5 flex flex-col gap-3">
-      <h3 className="font-bold text-lg">{proposal.title}</h3>
+    <div className="glass-card p-5 flex flex-col gap-3" style={cardStyle}>
+      <h3 className="font-bold text-lg leading-snug">{proposal.title}</h3>
       <p className="text-sm text-muted-foreground">{truncatedBody}</p>
 
       <div>
@@ -35,13 +41,19 @@ export function ProposalCard({ proposal, onVote }: ProposalCardProps) {
 
       <div>
         {proposal.approved ? (
-          <span className="inline-block px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400 font-medium">✅ Approved</span>
+          <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+            <CheckCircle2 className="size-3" />
+            Approved
+          </Badge>
         ) : (
-          <span className="inline-block px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400 font-medium">❌ Rejected</span>
+          <Badge variant="destructive">
+            <XCircle className="size-3" />
+            Rejected
+          </Badge>
         )}
       </div>
 
-      {proposal.approved && !proposal.finalized && result && (
+      {proposal.approved && result && (
         <div className="space-y-2">
           <div className="flex gap-2">
             <div className="flex-1">
@@ -57,22 +69,28 @@ export function ProposalCard({ proposal, onVote }: ProposalCardProps) {
               </div>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Yes: {result.yes_weight} | No: {result.no_weight} | Votes: {result.total_votes}</p>
-          <button
-            onClick={() => onVote(proposal)}
-            className="w-full py-2 text-sm font-semibold rounded-lg border border-accent text-accent hover:bg-accent hover:text-accent-foreground transition"
-          >
-            Vote
-          </button>
-        </div>
-      )}
+          <p className="text-xs text-muted-foreground">
+            Yes: {result.yes_weight} | No: {result.no_weight} | Votes: {result.total_votes}
+          </p>
 
-      {proposal.finalized && (
-        <div className="mt-2">
-          {proposal.vote_passed
-            ? <span className="text-sm text-green-400 font-semibold">🏁 Final: Passed</span>
-            : <span className="text-sm text-muted-foreground font-semibold">🏁 Final: Failed</span>
-          }
+          {!proposal.finalized && (
+            <button
+              onClick={() => onVote(proposal)}
+              className="w-full py-2 text-sm font-semibold rounded-lg border border-accent text-accent hover:bg-accent hover:text-accent-foreground transition"
+            >
+              Vote
+            </button>
+          )}
+
+          {proposal.finalized && (
+            <div className="flex items-center gap-2 pt-1">
+              <Flag className="size-4 text-muted-foreground shrink-0" />
+              {proposal.vote_passed
+                ? <span className="text-sm text-green-400 font-semibold">Final: Passed</span>
+                : <span className="text-sm text-muted-foreground font-semibold">Final: Failed</span>
+              }
+            </div>
+          )}
         </div>
       )}
     </div>

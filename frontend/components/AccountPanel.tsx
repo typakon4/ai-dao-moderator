@@ -3,6 +3,7 @@
 import { useWallet } from "@/lib/genlayer/WalletProvider";
 import { switchToGenLayerNetwork } from "@/lib/genlayer/client";
 import { error } from "@/lib/utils/toast";
+import { X } from "lucide-react";
 
 function shortenAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -85,7 +86,7 @@ export function AccountPanel() {
         className="inline-flex items-center rounded-full px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
         title="Disconnect"
       >
-        ✕
+        <X className="size-4" />
       </button>
     </div>
   );

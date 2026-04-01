@@ -52,7 +52,7 @@ export function SubmitProposalModal({ open, onClose, onSubmit }: SubmitProposalM
           </div>
           <div className="flex gap-3 justify-end">
             <button onClick={onClose} disabled={loading} className="px-4 py-2 rounded-lg border border-white/10 text-sm font-medium text-muted-foreground hover:border-white/20 transition">Cancel</button>
-            <button onClick={handleSubmit} disabled={loading || !title || !body} className="px-4 py-2 rounded-lg bg-accent text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50 transition">
+            <button onClick={handleSubmit} disabled={loading || !title || !body} className="px-4 py-2 rounded-lg gradient-purple-pink text-sm font-medium text-white hover:brightness-110 disabled:opacity-50 disabled:hover:brightness-100 transition-all">
               {loading ? "AI is evaluating..." : "Submit"}
             </button>
           </div>
