@@ -8,6 +8,7 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
+ENV PORT=3000
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx next start -p ${PORT:-3000}"]
+CMD ["node_modules/.bin/next", "start", "-p", "3000"]
