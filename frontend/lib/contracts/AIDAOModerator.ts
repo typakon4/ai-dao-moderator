@@ -109,7 +109,7 @@ class AIDAOModerator {
 
   private async waitAndVerify(hash: string): Promise<TransactionReceipt> {
     const receipt = await this.client.waitForTransactionReceipt({
-      hash,
+      hash: hash as any,
       status: "ACCEPTED" as any,
       retries: 36,
       interval: 5000,
@@ -124,17 +124,17 @@ class AIDAOModerator {
   }
 
   async submitProposal(pid: string, title: string, body: string): Promise<TransactionReceipt> {
-    const hash = await this.client.writeContract({ address: this.contractAddress, functionName: "submit_proposal", args: [pid, title, body] });
+    const hash = await (this.client as any).writeContract({ address: this.contractAddress, functionName: "submit_proposal", args: [pid, title, body] });
     return this.waitAndVerify(hash as string);
   }
 
   async vote(pid: string, support: boolean, argument: string): Promise<TransactionReceipt> {
-    const hash = await this.client.writeContract({ address: this.contractAddress, functionName: "vote", args: [pid, support, argument] });
+    const hash = await (this.client as any).writeContract({ address: this.contractAddress, functionName: "vote", args: [pid, support, argument] });
     return this.waitAndVerify(hash as string);
   }
 
   async finalizeVotes(pid: string, minYesWeight: number): Promise<TransactionReceipt> {
-    const hash = await this.client.writeContract({ address: this.contractAddress, functionName: "finalize_votes", args: [pid, minYesWeight] });
+    const hash = await (this.client as any).writeContract({ address: this.contractAddress, functionName: "finalize_votes", args: [pid, minYesWeight] });
     return this.waitAndVerify(hash as string);
   }
 }
